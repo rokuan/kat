@@ -60,4 +60,13 @@
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
+    <TextView
+        android:text="Logs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+    <GridView
+        android:id="@+id/application_logs"
+        android:numColumns="auto_fit"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"></GridView>
 </LinearLayout>
