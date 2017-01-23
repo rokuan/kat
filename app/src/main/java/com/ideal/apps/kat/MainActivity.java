@@ -1,6 +1,7 @@
 package com.ideal.apps.kat;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
@@ -72,7 +73,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openApplicationState(ApplicationInfo application){
-
+        Intent i = new Intent(this, ApplicationActivity.class);
+        i.putExtra(ApplicationActivity.APPLICATION_INFO_EXTRA, application.packageName);
+        startActivity(i);
     }
 
     class ApplicationAdapter extends ArrayAdapter<ApplicationInfo> {

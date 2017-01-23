@@ -39,15 +39,28 @@ public class LogService extends Service {
         return binder;
     }
 
-    public boolean isRecording(ApplicationInfo application){
+    public synchronized boolean isRecording(ApplicationInfo application){
         return runningRecordings.containsKey(application.packageName);
     }
 
-    public synchronized void startRecording(ApplicationInfo application){
-        String packageName = application.packageName;
-        RecordInfo record = new RecordInfo(this, application);
-        runningRecordings.put(packageName, record);
-        record.start();
+    private void addRecordNotification(ApplicationInfo application){
+
+    }
+
+    public synchronized boolean startRecording(ApplicationInfo application){
+        try {
+            if(!isRecording(application)) {
+                String packageName = application.packageName;
+                RecordInfo record = new RecordInfo(this, application);
+                runningRecordings.put(packageName, record);
+                record.start();
+                addRecordNotification(application);
+                return true;
+            }
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public synchronized void stopRecording(ApplicationInfo application){

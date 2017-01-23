@@ -21,9 +21,15 @@ public class RecordInfo {
 
     class RecordThread extends Thread {
         private File outputFile;
+        private volatile boolean running = true;
 
         public RecordThread(File o){
             outputFile = o;
+        }
+
+        public void startRecord(){
+            running = true;
+            start();
         }
 
         @Override
@@ -34,28 +40,45 @@ public class RecordInfo {
             BufferedReader reader = null;
             Process process = null;
 
+            outputFile.getParentFile().mkdirs();
+
             try {
                 outputFile.createNewFile();
+
                 os = new FileOutputStream(outputFile);
                 writer = new PrintWriter(os, true);
 
-                process = Runtime.getRuntime().exec("logcat -s " + application.packageName);
+                Runtime.getRuntime().exec("logcat -c");
+                process = Runtime.getRuntime().exec("logcat");
                 is = new InputStreamReader(process.getInputStream());
                 reader = new BufferedReader(is);
-                String line;
 
-                while((line = reader.readLine()) != null){
-                    writer.println(line);
+                while(running){
+                    String line = reader.readLine();
+                    if(line != null){
+                        writer.println(line);
+                    }
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        break;
+                    }
                 }
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
+                System.out.println("Recording has stopped");
                 try { writer.close(); } catch (Exception _) {}
                 try { reader.close(); } catch (Exception _) {}
                 try { process.destroy(); } catch (Exception e) {}
             }
+        }
+
+        public void stopRecord(){
+            running = false;
         }
     }
 
@@ -69,12 +92,12 @@ public class RecordInfo {
         startTime = System.currentTimeMillis();
         File output = FileUtils.getFilePath(context, application, startTime);
         recordThread = new RecordThread(output);
-        recordThread.start();
+        recordThread.startRecord();
     }
 
     public void stop(){
         try {
-            recordThread.interrupt();
+            recordThread.stopRecord();
         } catch (Exception e) {
 
         }

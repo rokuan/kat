@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -13,9 +14,11 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.GridView;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.ideal.apps.kat.service.LogService;
@@ -34,6 +37,8 @@ import butterknife.OnClick;
 public class ApplicationActivity extends AppCompatActivity {
     public static String APPLICATION_INFO_EXTRA = "application_info_package";
 
+    @BindView(R.id.application_icon)
+    protected ImageView applicationIconView;
     @BindView(R.id.application_name)
     protected TextView applicationNameView;
     @BindView(R.id.application_package)
@@ -44,11 +49,11 @@ public class ApplicationActivity extends AppCompatActivity {
     protected LogAdapter logAdapter;
 
     @BindView(R.id.record_log)
-    protected Button recordButton;
+    protected ImageButton recordButton;
     @BindView(R.id.pause_log)
-    protected Button pauseButton;
+    protected ImageButton pauseButton;
     @BindView(R.id.stop_log)
-    protected Button stopButton;
+    protected ImageButton stopButton;
 
     private LogService service;
     private boolean bound = false;
@@ -123,6 +128,7 @@ public class ApplicationActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
         Intent intent = new Intent(this, LogService.class);
+        startService(intent);
         bindService(intent, serviceCallback, Context.BIND_AUTO_CREATE);
     }
 
@@ -137,7 +143,9 @@ public class ApplicationActivity extends AppCompatActivity {
     protected void updateButtonsState(){
         boolean recording = service.isRecording(application);
         recordButton.setEnabled(!recording);
+        recordButton.setVisibility(recording ? View.INVISIBLE : View.VISIBLE);
         stopButton.setEnabled(recording);
+        stopButton.setVisibility(recording ? View.VISIBLE : View.INVISIBLE);
     }
 
     protected void fillApplicationDetails(){
@@ -145,25 +153,42 @@ public class ApplicationActivity extends AppCompatActivity {
         String applicationName = packageManager.getApplicationLabel(application).toString();
         applicationNameView.setText(applicationName);
         applicationPackageView.setText(application.packageName);
+        applicationIconView.setImageDrawable(packageManager.getApplicationIcon(application));
     }
 
     protected void fillLogsGrid(){
         File logDirectory = FileUtils.getApplicationLogDirectory(this, application);
-        File[] logs = logDirectory.listFiles();
-        List<File> applicationLogs = new ArrayList<>();
-        for(File f: logs){
-            if(f.isFile()){
-                applicationLogs.add(f);
+
+        if(logDirectory.exists()) {
+            File[] logs = logDirectory.listFiles();
+            List<File> applicationLogs = new ArrayList<>();
+            for (File f : logs) {
+                if (f.isFile()) {
+                    applicationLogs.add(f);
+                }
             }
+            logAdapter = new LogAdapter(this, applicationLogs);
+            applicationLogsView.setAdapter(logAdapter);
+            applicationLogsView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                    File logFile = logAdapter.getItem(i);
+                    Intent intent = new Intent(Intent.ACTION_VIEW);
+                    Uri uri = Uri.fromFile(logFile);
+                    //intent.setDataAndType(uri, "plain/text");
+                    intent.setData(uri);
+                    //startActivity(intent);
+                }
+            });
         }
-        logAdapter = new LogAdapter(this, applicationLogs);
-        applicationLogsView.setAdapter(logAdapter);
     }
 
     @OnClick(R.id.record_log)
     public void recordLog(){
         if(service != null) {
-            service.startRecording(application);
+            if(service.startRecording(application)){
+                updateButtonsState();
+            }
         }
     }
 
@@ -176,6 +201,21 @@ public class ApplicationActivity extends AppCompatActivity {
     public void stopLog(){
         if(service != null){
             service.stopRecording(application);
+            updateButtonsState();
+            fillLogsGrid();
         }
+    }
+
+    @OnClick(R.id.clear_logs)
+    public void clearLogs(){
+        File logDirectory = FileUtils.getApplicationLogDirectory(this, application);
+        File[] files = logDirectory.listFiles();
+
+        if(files != null){
+            for(File f: files){
+                f.delete();
+            }
+        }
+        fillLogsGrid();
     }
 }
